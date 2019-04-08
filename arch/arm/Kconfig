@@ -1145,6 +1145,16 @@ config TARGET_LS1046ARDB
 config TARGET_H2200
 	bool "Support h2200"
 	select CPU_PXA
+	
+config TARGET_TQMLS1028A
+	bool "Support tqmls1028a"
+	select ARCH_LS1028A
+	select ARM64
+	select ARMV8_MULTIENTRY
+	select SUPPORT_SPL
+	select BOARD_LATE_INIT
+	help
+	  Support for TQC LS1028A module
 
 config TARGET_ZIPITZ2
 	bool "Support zipitz2"
@@ -1382,6 +1392,7 @@ source "board/spear/spear600/Kconfig"
 source "board/spear/x600/Kconfig"
 source "board/st/stv0991/Kconfig"
 source "board/tcl/sl50/Kconfig"
+source "board/tqc/tqmls1028a/Kconfig"
 source "board/birdland/bav335x/Kconfig"
 source "board/timll/devkit3250/Kconfig"
 source "board/toradex/colibri_pxa270/Kconfig"
