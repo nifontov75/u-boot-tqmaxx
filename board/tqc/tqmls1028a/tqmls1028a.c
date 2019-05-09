@@ -727,93 +727,12 @@ int last_stage_init(void)
 #endif
 	tqmls1028a_bb_late_init();
 
-	return 0;
-}
-#endif
-
-#ifdef CONFIG_FSL_QIXIS
-int checkboard(void)
-{
-	u8 sw;
-	int clock;
-	char *board;
-	char buf[64] = {0};
-	static const char *freq[6] = {"100.00", "125.00", "156.25",
-					"161.13", "322.26", "100.00 SS"};
-
-	cpu_name(buf);
-	/* find the board details */
-	sw = QIXIS_READ(id);
-	switch (sw) {
-	case 0x46:
-		board = "QDS";
-		break;
-	case 0x47:
-		board = "RDB";
-		break;
-	case 0x49:
-		board = "HSSI";
-		break;
-	default:
-		board = "unknown";
-		break;
-	}
-
-	sw = QIXIS_READ(arch);
-	printf("Board: %s-%s, Version: %c, boot from ",
-	       buf, board, (sw & 0xf) + 'A' - 1);
-
-	sw = QIXIS_READ(brdcfg[0]);
-	sw = (sw & QIXIS_LBMAP_MASK) >> QIXIS_LBMAP_SHIFT;
-
-#ifdef CONFIG_SD_BOOT
-	puts("SD\n");
-#elif defined(CONFIG_EMMC_BOOT)
-	puts("eMMC\n");
-#else
-	switch (sw) {
-	case 0:
-	case 4:
-		printf("NOR\n");
-		break;
-	case 1:
-		printf("NAND\n");
-		break;
-#ifndef CONFIG_TARGET_LS1028AQDS
-	case 2:
-#endif
-	case 3:
-		printf("EMU\n");
-		break;
-	default:
-		printf("invalid setting of SW%u\n", QIXIS_LBMAP_SWITCH);
-		break;
-	}
-#endif
-
-	printf("FPGA: v%d (%s: %s_%s)\n", QIXIS_READ(scver),
-	       !qixis_read_released()  ? "INTERIM" : "RELEASED",
-			board, qixis_read_date(buf));
-
-	puts("SERDES1 Reference : ");
-	sw = QIXIS_READ(brdcfg[2]);
-#ifdef CONFIG_TARGET_TQMLS1028A
-	clock = (sw >> 6) & 3;
-#else
-	clock = (sw >> 4) & 0xf;
-#endif
-
-	printf("Clock1 = %sMHz ", freq[clock]);
-#ifdef CONFIG_TARGET_TQMLS1028A
-	clock = (sw >> 4) & 3;
-#else
-	clock = sw & 0xf;
-#endif
-	printf("Clock2 = %sMHz\n", freq[clock]);
 
 	return 0;
 }
 #endif
+
+
 
 void *video_hw_init(void)
 {
