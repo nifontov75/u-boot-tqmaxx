@@ -148,8 +148,8 @@ int ft_board_setup(void *blob, bd_t *bd)
 #if defined(CONFIG_FSL_ENETC) && defined(CONFIG_FSL_QIXIS)
 
 #define MUX_INF(fmt, args...)	do {} while (0)
-#define MUX_DBG(fmt, args...)  do {} while (0)
-#define MUX_ERR(fmt, args...)	printf("MDIO MUX: " fmt, ##args)
+#define MUX_DBG(fmt, args...)	do {} while (0)
+#define MUX_ERR(fmt, args...)	printf("MDIO MUXE: " fmt, ##args)
 struct mdio_qixis_mux {
 	struct mii_dev *bus;
 	int select;
@@ -296,6 +296,7 @@ void setup_mdio_mux(void)
 	     offset = fdt_next_subnode(fdt, offset)) {
 		setup_mdio_mux_group(offset, mdio_node, mask);
 	};
+	debug ("mdio_mux setup complete \n");
 }
 #endif /* #if defined(CONFIG_FSL_ENETC) && defined(CONFIG_FSL_QIXIS) */
 
@@ -306,7 +307,7 @@ extern void enetc_imdio_write(struct mii_dev *bus, int port, int dev, int reg, u
 
 extern int serdes_protocol;
 
-#define PCS_INF(fmt, args...)  do {} while (0)
+#define PCS_INF(fmt, args...)  printf("PCS: " fmt, ##args)
 #define PCS_ERR(fmt, args...)  printf("PCS: " fmt, ##args)
 void setup_4xSGMII(void)
 {
@@ -358,6 +359,52 @@ void setup_4xSGMII(void)
 	}
 #endif
 }
+#if 0
+static uint16_t _rgmii_phy_read_indirect(struct phy_device *phydev,
+                                        uint8_t addr)
+{
+        phy_write(phydev, MDIO_DEVAD_NONE, 0x0d, 0x001f);
+        phy_write(phydev, MDIO_DEVAD_NONE, 0x0e, addr);
+        phy_write(phydev, MDIO_DEVAD_NONE, 0x0d, 0x401f);
+        return phy_read(phydev, MDIO_DEVAD_NONE, 0x0e);
+}
+
+static void _rgmii_phy_write_indirect(struct phy_device *phydev,
+                                        uint8_t addr, uint16_t value)
+{
+        phy_write(phydev, MDIO_DEVAD_NONE, 0x0d, 0x001f);
+        phy_write(phydev, MDIO_DEVAD_NONE, 0x0e, addr);
+        phy_write(phydev, MDIO_DEVAD_NONE, 0x0d, 0x401f);
+        phy_write(phydev, MDIO_DEVAD_NONE, 0x0e, value);
+}
+
+int board_phy_config(struct phy_device *phydev)
+{
+        uint16_t val;
+        int ret = 0;
+
+        debug ("Configuring RGMII at addr:  \n", phydev->addr);
+
+        if (phydev->drv->config)
+                ret = phydev->drv->config(phydev);
+
+        if(!ret) {
+                if(phydev->addr == 0x00)  {
+                        /* enable RGMII delay in both directions */
+                        val = _rgmii_phy_read_indirect(phydev, 0x32);
+                        val |= 0x0003;
+                        _rgmii_phy_write_indirect(phydev, 0x32, val);
+
+                        /* set RGMII delay in both directions to 1,5ns */
+                        val = _rgmii_phy_read_indirect(phydev, 0x86);
+                        val = (val & 0xFF00) | 0x0055;
+                        _rgmii_phy_write_indirect(phydev, 0x86, val);
+                }
+        }
+        return ret;
+}
+#endif
+
 
 void setup_QSGMII(void)
 {
@@ -654,49 +701,6 @@ static void setup_1xSGMII(void)
 }
 
 
-void setup_RGMII(void)
-{
-#if defined(CONFIG_TARGET_LS1028AQDS)
-	#define NETC_PF1_BAR0_BASE	0x1f8050000
-	#define NETC_PF1_ECAM_BASE	0x1F0001000
-	struct mii_dev *ext_bus;
-	char *mdio_name = "mdio@00";
-	int phy_addr = 5;
-	int value;
-
-	PCS_INF("trying to set up RGMII\n");
-
-	/* turn on PCI function */
-	out_le16(NETC_PF1_ECAM_BASE + 4, 0xffff);
-	out_le32(NETC_PF1_BAR0_BASE + 0x8300, 0x8006);
-
-	/* configure AQR PHY */
-	ext_bus = miiphy_get_dev_by_name(mdio_name);
-	if (!ext_bus) {
-		PCS_ERR("couldn't find MDIO bus, ignoring the PHY\n");
-		return;
-	}
-	/* Atheros magic */
-	ext_bus->write(ext_bus, phy_addr, MDIO_DEVAD_NONE, 0x0d, 0x0007);
-	ext_bus->write(ext_bus, phy_addr, MDIO_DEVAD_NONE, 0x0e, 0x8016);
-	ext_bus->write(ext_bus, phy_addr, MDIO_DEVAD_NONE, 0x0d, 0x4007);
-	value = ext_bus->read(ext_bus, phy_addr, MDIO_DEVAD_NONE, 0x0e);
-	if (value == 0xffff)
-		goto phy_err;
-	ext_bus->write(ext_bus, phy_addr, MDIO_DEVAD_NONE, 0x0e, value | 0x0018);
-	ext_bus->write(ext_bus, phy_addr, MDIO_DEVAD_NONE, 0x1d, 0x0005);
-	value = ext_bus->read(ext_bus, phy_addr, MDIO_DEVAD_NONE, 0x1e);
-	if (value == 0xffff)
-		goto phy_err;
-	ext_bus->write(ext_bus, phy_addr, MDIO_DEVAD_NONE, 0x1e, value | 0x0100);
-	/* restart AN */
-	ext_bus->write(ext_bus, phy_addr, MDIO_DEVAD_NONE, 0x0d, 0x1200);
-
-	return;
-phy_err:
-	PCS_ERR("RGMII PHY access error, giving up.\n");
-#endif
-}
 
 
 
@@ -722,18 +726,7 @@ int last_stage_init(void)
 	setup_mdio_mux();
 #endif
 	tqmls1028a_bb_late_init();
-/*
-	setup_switch();
 
-	setup_1xSGMII();
-	setup_4xSGMII();
-	setup_QSGMII();
-	setup_SXGMII();
-	setup_RGMII();
-#if 1
-	setup_QSXGMII();
-#endif
-*/
 	return 0;
 }
 #endif
