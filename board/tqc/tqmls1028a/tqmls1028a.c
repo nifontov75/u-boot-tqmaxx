@@ -721,7 +721,8 @@ int last_stage_init(void)
 #if defined(CONFIG_FSL_ENETC) && defined(CONFIG_FSL_QIXIS)
 	setup_mdio_mux();
 #endif
-
+	tqmls1028a_bb_late_init();
+/*
 	setup_switch();
 
 	setup_1xSGMII();
@@ -732,6 +733,7 @@ int last_stage_init(void)
 #if 1
 	setup_QSXGMII();
 #endif
+*/
 	return 0;
 }
 #endif
