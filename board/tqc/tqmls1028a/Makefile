@@ -7,4 +7,3 @@
 obj-y += tqmls1028a.o
 obj-$(CONFIG_MBLS1028A) += tqmls1028a_mbls1028a.o
 obj-y += ddr.o
-obj-y += qixis.o
