@@ -25,7 +25,8 @@
 
 #include <fdtdec.h>
 #include <miiphy.h>
-#include "qixis.h"
+
+#include "tqmls1028a_bb.h"
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -54,7 +55,6 @@ int board_eth_init(bd_t *bis)
 
 int board_early_init_f(void)
 {
-
 #ifdef CONFIG_SYS_I2C_EARLY_INIT
 	i2c_early_init_f();
 #endif
@@ -77,6 +77,7 @@ int ft_board_setup(void *blob, bd_t *bd)
 {
 	u64 base[CONFIG_NR_DRAM_BANKS];
 	u64 size[CONFIG_NR_DRAM_BANKS];
+
 	ft_cpu_setup(blob, bd);
 
 	/* fixup DT for the two GPP DDR banks */
@@ -110,11 +111,9 @@ int last_stage_init(void)
 }
 #endif
 
-
-
 void *video_hw_init(void)
 {
-	return;
+	return NULL;
 }
 
 #ifdef CONFIG_EMMC_BOOT

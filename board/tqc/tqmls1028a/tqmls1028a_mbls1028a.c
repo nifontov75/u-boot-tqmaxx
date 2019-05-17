@@ -8,10 +8,9 @@
 #include <miiphy.h>
 #include "tqmls1028a_bb.h"
 
-
 int checkboard(void)
 {
-	printf ("Board: MBLS1028A Booting from: ");
+	printf("Board: MBLS1028A Booting from: ");
 #ifdef CONFIG_SD_BOOT
 	puts("SD\n");
 #elif CONFIG_EMMC_BOOT
@@ -28,7 +27,7 @@ int checkboard(void)
 
 static uint16_t _rgmii_phy_read_indirect(struct mii_dev *ext_bus, uint8_t addr)
 {
-	if (NULL == ext_bus)
+	if (!ext_bus)
 		return 0;
 
 	ext_bus->write(ext_bus, RGMII_PHY_DEV_ADDR, MDIO_DEVAD_NONE, 0x0d, 0x001f);
@@ -39,7 +38,7 @@ static uint16_t _rgmii_phy_read_indirect(struct mii_dev *ext_bus, uint8_t addr)
 
 static void _rgmii_phy_write_indirect(struct mii_dev *ext_bus, uint8_t addr, uint16_t value)
 {
-	if (NULL == ext_bus)
+	if (!ext_bus)
 		return;
 
 	ext_bus->write(ext_bus, RGMII_PHY_DEV_ADDR, MDIO_DEVAD_NONE, 0x0d, 0x001f);
@@ -50,7 +49,6 @@ static void _rgmii_phy_write_indirect(struct mii_dev *ext_bus, uint8_t addr, uin
 
 static void setup_RGMII(void)
 {
-
 	#define NETC_PF1_BAR0_BASE	0x1f8050000
 	#define NETC_PF1_ECAM_BASE	0x1F0001000
 	struct mii_dev *ext_bus;
