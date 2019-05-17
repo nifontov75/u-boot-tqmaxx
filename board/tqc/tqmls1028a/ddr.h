@@ -6,7 +6,8 @@
 #ifndef __DDR_H__
 #define __DDR_H__
 
-extern void erratum_a008850_post(void);
+#include <common.h>
+#include <fsl_ddr_sdram.h>
 
 struct board_specific_parameters {
 	u32 n_ranks;
