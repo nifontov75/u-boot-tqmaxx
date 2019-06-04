@@ -25,6 +25,11 @@ config MBLS1028A
 	  This features a Ethernet, USB, SD-Card, etc.
 endchoice
 
+config RTC_PCF85063
+       bool "PCF85063 RTC"
+       help
+	       PCF85063 RTC
+
 config EMU
 	bool "Emulator Support"
 	default n
