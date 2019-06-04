@@ -30,6 +30,7 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
+
 int board_init(void)
 {
 #ifdef CONFIG_ENV_IS_NOWHERE
@@ -39,6 +40,8 @@ int board_init(void)
 #ifdef CONFIG_FSL_LS_PPA
 	ppa_init();
 #endif
+
+	board_bb_init();
 
 #ifndef CONFIG_SYS_EARLY_PCI_INIT
 	/* run PCI init to kick off ENETC */
