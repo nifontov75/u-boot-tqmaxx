@@ -6,6 +6,7 @@
 #include <common.h>
 #include <asm/io.h>
 #include <miiphy.h>
+#include <fsl_memac.h>
 #include "tqmls1028a_bb.h"
 #include <i2c.h>
 
@@ -150,7 +151,55 @@ static void setup_RGMII(void)
 	val = _rgmii_phy_read_indirect(ext_bus, 0x86);
 }
 
+extern int enetc_imdio_read(struct mii_dev *bus, int port, int dev, int reg);
+extern void enetc_imdio_write(struct mii_dev *bus, int port, int dev, int reg, u16 val);
+
+extern int serdes_protocol;
+
+static void setup_SGMII(void)
+{
+	#define NETC_PF0_BAR0_BASE	0x1f8010000
+	#define NETC_PF0_ECAM_BASE	0x1F0000000
+	struct mii_dev bus = {0};
+	u16 value;
+	int to;
+
+	if ((serdes_protocol & 0xf) != 0x0008)
+		return;
+
+	PCS_INF("trying to set up SGMII, this is hardcoded for SERDES 8xxx!!!!\n");
+
+	/* turn on PCI function */
+	out_le16(NETC_PF0_ECAM_BASE + 4, 0xffff);
+
+	bus.priv = (void *)NETC_PF0_BAR0_BASE + 0x8030;
+	value = PHY_SGMII_IF_MODE_SGMII | PHY_SGMII_IF_MODE_AN;
+	enetc_imdio_write(&bus, 0, MDIO_DEVAD_NONE, 0x14, value);
+	/* Dev ability according to SGMII specification */
+	value = PHY_SGMII_DEV_ABILITY_SGMII;
+	enetc_imdio_write(&bus, 0, MDIO_DEVAD_NONE, 0x04, value);
+	/* Adjust link timer for SGMII */
+	enetc_imdio_write(&bus, 0, MDIO_DEVAD_NONE, 0x13, 0x0003);
+	enetc_imdio_write(&bus, 0, MDIO_DEVAD_NONE, 0x12, 0x06a0);
+
+	/* restart AN */
+	value = PHY_SGMII_CR_DEF_VAL | PHY_SGMII_CR_RESET_AN;
+
+	enetc_imdio_write(&bus, 0, MDIO_DEVAD_NONE, 0x00, value);
+	/* wait for link */
+	to = 1000;
+	do {
+		value = enetc_imdio_read(&bus, 0, MDIO_DEVAD_NONE, 0x01);
+		if ((value & 0x0024) == 0x0024)
+			break;
+	} while (--to);
+	PCS_INF("BMSR %04x\n", value);
+	if ((value & 0x0024) != 0x0024)
+		PCS_ERR("PCS[0] didn't link up, giving up.\n");
+}
+
 void tqmls1028a_bb_late_init(void)
 {
 	setup_RGMII();
+	setup_SGMII();
 }
