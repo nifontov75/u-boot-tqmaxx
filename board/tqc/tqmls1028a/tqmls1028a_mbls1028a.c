@@ -6,7 +6,6 @@
 #include <common.h>
 #include <asm/io.h>
 #include <miiphy.h>
-#include <fsl_memac.h>
 #include "tqmls1028a_bb.h"
 #include <i2c.h>
 
@@ -88,9 +87,6 @@ int board_bb_init(void)
 	return clockgen_init();
 }
 
-#define PCS_INF(fmt, args...)  printf("PCS: " fmt, ##args)
-#define PCS_ERR(fmt, args...)  printf("PCS: " fmt, ##args)
-
 static uint16_t _rgmii_phy_read_indirect(struct mii_dev *ext_bus, uint8_t addr)
 {
 	if (!ext_bus)
@@ -113,23 +109,15 @@ static void _rgmii_phy_write_indirect(struct mii_dev *ext_bus, uint8_t addr, uin
 	ext_bus->write(ext_bus, RGMII_PHY_DEV_ADDR, MDIO_DEVAD_NONE, 0x0e, value);
 }
 
-static void setup_RGMII(void)
+static void setup_RGMII_PHY(void)
 {
-	#define NETC_PF1_BAR0_BASE	0x1f8050000
-	#define NETC_PF1_ECAM_BASE	0x1F0001000
 	struct mii_dev *ext_bus;
-	char *mdio_name = RGMII_MDIO_NAME;
+	char *mdio_name = PHY_MDIO_NAME;
 	int val;
-
-	PCS_INF("trying to set up RGMII\n");
-
-	/* turn on PCI function */
-	out_le16(NETC_PF1_ECAM_BASE + 4, 0xffff);
-	out_le32(NETC_PF1_BAR0_BASE + 0x8300, 0x8006);
 
 	ext_bus = miiphy_get_dev_by_name(mdio_name);
 	if (!ext_bus) {
-		PCS_ERR("couldn't find MDIO bus, ignoring the PHY\n");
+		printf("couldn't find MDIO bus, ignoring the PHY\n");
 		return;
 	}
 
@@ -151,55 +139,57 @@ static void setup_RGMII(void)
 	val = _rgmii_phy_read_indirect(ext_bus, 0x86);
 }
 
-extern int enetc_imdio_read(struct mii_dev *bus, int port, int dev, int reg);
-extern void enetc_imdio_write(struct mii_dev *bus, int port, int dev, int reg, u16 val);
-
-extern int serdes_protocol;
-
-static void setup_SGMII(void)
+static void setup_SGMII_PHY(void)
 {
-	#define NETC_PF0_BAR0_BASE	0x1f8010000
-	#define NETC_PF0_ECAM_BASE	0x1F0000000
-	struct mii_dev bus = {0};
-	u16 value;
-	int to;
+	struct mii_dev *ext_bus;
+	char *mdio_name = PHY_MDIO_NAME;
+	u16 val;
 
-	if ((serdes_protocol & 0xf) != 0x0008)
+	ext_bus = miiphy_get_dev_by_name(mdio_name);
+	if (!ext_bus) {
+		printf("couldn't find MDIO bus, ignoring the PHY\n");
 		return;
+	}
 
-	PCS_INF("trying to set up SGMII, this is hardcoded for SERDES 8xxx!!!!\n");
+	/* Set SGMII PHY LEDs Led1 and Led2 to active low */
+	val = ext_bus->read(ext_bus, SGMII_PHY_DEV_ADDR, MDIO_DEVAD_NONE, 0x19);
+	val &= 0xFBBF;
+	ext_bus->write(ext_bus, SGMII_PHY_DEV_ADDR, MDIO_DEVAD_NONE, 0x19, val);
+}
 
-	/* turn on PCI function */
-	out_le16(NETC_PF0_ECAM_BASE + 4, 0xffff);
+static void setup_QSGMII_PHY(void)
+{
+	struct mii_dev *ext_bus;
+	int phy_addr;
+	char *mdio_name = PHY_MDIO_NAME;
 
-	bus.priv = (void *)NETC_PF0_BAR0_BASE + 0x8030;
-	value = PHY_SGMII_IF_MODE_SGMII | PHY_SGMII_IF_MODE_AN;
-	enetc_imdio_write(&bus, 0, MDIO_DEVAD_NONE, 0x14, value);
-	/* Dev ability according to SGMII specification */
-	value = PHY_SGMII_DEV_ABILITY_SGMII;
-	enetc_imdio_write(&bus, 0, MDIO_DEVAD_NONE, 0x04, value);
-	/* Adjust link timer for SGMII */
-	enetc_imdio_write(&bus, 0, MDIO_DEVAD_NONE, 0x13, 0x0003);
-	enetc_imdio_write(&bus, 0, MDIO_DEVAD_NONE, 0x12, 0x06a0);
+	phy_addr = QSGMII_PHY_DEV_ADDR;
 
-	/* restart AN */
-	value = PHY_SGMII_CR_DEF_VAL | PHY_SGMII_CR_RESET_AN;
+	ext_bus = miiphy_get_dev_by_name(mdio_name);
+	if (!ext_bus) {
+		printf("couldn't find MDIO bus, skipping external PHY config\n");
+		return;
+	}
 
-	enetc_imdio_write(&bus, 0, MDIO_DEVAD_NONE, 0x00, value);
-	/* wait for link */
-	to = 1000;
-	do {
-		value = enetc_imdio_read(&bus, 0, MDIO_DEVAD_NONE, 0x01);
-		if ((value & 0x0024) == 0x0024)
-			break;
-	} while (--to);
-	PCS_INF("BMSR %04x\n", value);
-	if ((value & 0x0024) != 0x0024)
-		PCS_ERR("PCS[0] didn't link up, giving up.\n");
+	/* Initialize QSGMII Phy, see Marvel Document MV-S301615 */
+	ext_bus->write(ext_bus, phy_addr, MDIO_DEVAD_NONE, 0x16, 0x00FF);
+	ext_bus->write(ext_bus, phy_addr, MDIO_DEVAD_NONE, 0x18, 0x2800);
+	ext_bus->write(ext_bus, phy_addr, MDIO_DEVAD_NONE, 0x17, 0x2001);
+	ext_bus->write(ext_bus, phy_addr, MDIO_DEVAD_NONE, 0x16, 0x0000);
+
+	ext_bus->write(ext_bus, phy_addr, MDIO_DEVAD_NONE, 0x16, 0x0000);
+	ext_bus->write(ext_bus, phy_addr, MDIO_DEVAD_NONE, 0x1D, 0x0003);
+	ext_bus->write(ext_bus, phy_addr, MDIO_DEVAD_NONE, 0x1E, 0x0002);
+	ext_bus->write(ext_bus, phy_addr, MDIO_DEVAD_NONE, 0x16, 0x0000);
+
+	/* Reset Phy */
+	ext_bus->write(ext_bus, phy_addr, MDIO_DEVAD_NONE, 0x16, 0x0004);
+	ext_bus->write(ext_bus, phy_addr, MDIO_DEVAD_NONE, 0x1B, 0x8000);
 }
 
 void tqmls1028a_bb_late_init(void)
 {
-	setup_RGMII();
-	setup_SGMII();
+	setup_RGMII_PHY();
+	setup_SGMII_PHY();
+	setup_QSGMII_PHY();
 }

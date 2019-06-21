@@ -9,7 +9,9 @@
 #define __CONFIG_TQMLS1028A_MBLS1028AL_H__
 
 #define RGMII_PHY_DEV_ADDR 0x00
-#define RGMII_MDIO_NAME "netc_mdio"
+#define SGMII_PHY_DEV_ADDR 0x03
+#define QSGMII_PHY_DEV_ADDR 0x1C
+#define PHY_MDIO_NAME "netc_mdio"
 
 #define CLOCKGEN_I2C_BUS_NUM	0x4 
 #define CLOCKGEN_I2C_ADDR		0x70
