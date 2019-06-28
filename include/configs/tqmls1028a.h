@@ -79,6 +79,7 @@
 
 #define TQMLS1028_SD_RCW_FILE_NAME	"rcw_1300_sd.bin"
 #define TQMLS1028_EMMC_RCW_FILE_NAME	"rcw_1300_emmc.bin"
+#define TQMLS1028_QSPI_RCW_FILE_NAME	"rcw_1300_spi.bin"
 #define TQMLS1028_SD_UBOOT_FILE_NAME	"u-boot-with-spl.bin"
 #define TQMLS1028_SD_KERNEL_FILE_NAME	"Image.gz"
 #define MAX_RCW_SIZE 1024
@@ -91,6 +92,7 @@
 	"rcw_max_size="__stringify(MAX_RCW_SIZE)"\0"                           \
 	"rcw_sd_offset="__stringify(SD_RCW_OFFSET)"\0"                         \
 	"rcw_emmc_file="TQMLS1028_EMMC_RCW_FILE_NAME"\0"                           \
+	"rcw_qspi_file="TQMLS1028_QSPI_RCW_FILE_NAME"\0"                           \
 	"uboot_sd_file="TQMLS1028_SD_UBOOT_FILE_NAME"\0"                           \
 	"uboot_max_size="__stringify(MAX_UBOOT_SIZE)"\0"                           \
 	"uboot_sd_offset="__stringify(SD_UBOOT_OFFSET)"\0"                         \
@@ -187,6 +189,24 @@
 			"fi; "                                                 \
 		"fi; "                                                         \
 		"setenv filesize; setenv getcmd \0"                            \
+	"update_rcw_qspi=run set_getcmd; "                                       \
+		"if ${getcmd} ${rcw_qspi_file}; then "                           \
+			"if itest ${filesize} > 0; then "                      \
+				"if itest ${filesize} <= ${uboot_max_size}; then "	       \
+					"sf probe; sf update ${loadaddr} 0x0 ${filesize};"\
+				"fi; "                                         \
+			"fi; "                                                 \
+		"fi; "                                                         \
+		"setenv filesize; setenv blkc; setenv getcmd \0"               \
+	"update_uboot_qspi=run set_getcmd; "                                     \
+		"if ${getcmd} ${uboot_sd_file}; then "                         \
+			"if itest ${filesize} > 0; then "                      \
+				"if itest ${filesize} <= ${uboot_max_size}; then "	       \
+					"sf probe; sf update ${loadaddr} 0x100000 ${filesize};"\
+				"fi; "                                         \
+			"fi; "                                                 \
+		"fi; "                                                         \
+		"setenv filesize; setenv blkc; setenv getcmd \0"               \
 
 #undef BOOT_ENV_SETTINGS
 #define BOOT_ENV_SETTINGS \
